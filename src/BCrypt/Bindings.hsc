@@ -12,7 +12,7 @@ import System.Win32.Types
 
 type ULONG = Word32
 type BCRYPT_ALG_HANDLE = Ptr ()
-type NTSTATUS = Word32
+type NTSTATUS = Int32
 
 foreign import stdcall unsafe "BCryptOpenAlgorithmProvider"
   c_BCryptOpenAlgorithmProvider
