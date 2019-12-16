@@ -1,9 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, ScopedTypeVariables, FlexibleContexts #-}
 module BCrypt
   ( SymmetricAlgorithm(..)
   , BCryptAlgImplProvider(..)
   , SymmetricAlgorithmHandler
   , openSymmetricAlgorithm
+  , ObjectLengthProp(..)
+  , getAlgorithmProperty
   ) where
 
 import Data.Word (Word, Word32)
@@ -13,6 +15,7 @@ import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate)
 
 import Foreign
 import Foreign.C.String
+import System.Win32.Types
 
 import qualified BCrypt.Bindings as B
 
@@ -79,3 +82,34 @@ openSymmetricAlgorithm alg provider =
     status <- B.c_BCryptCloseAlgorithmProvider handler 0
     when (status < 0) $
       fail "cannot open alg"
+
+class BCryptProperty p where
+  type PropertyValue p :: *
+  propertyName :: p -> String
+
+data ObjectLengthProp = ObjectLengthProp
+instance BCryptProperty ObjectLengthProp where
+  type PropertyValue ObjectLengthProp = DWORD
+  propertyName _ = "ObjectLength"
+
+getAlgorithmProperty
+  :: forall p. (BCryptProperty p, Storable (PropertyValue p))
+  => SymmetricAlgorithmHandler -> p -> IO (PropertyValue p)
+getAlgorithmProperty handler prop =
+  withCWString (propertyName prop) $ \propName ->
+  alloca $ \(propValue :: Ptr (PropertyValue p)) ->
+  alloca $ \(pcbResult :: Ptr B.ULONG) -> do
+    let propSize = fromIntegral $ sizeOf (undefined :: PropertyValue p)
+    status <- B.c_BCryptGetProperty
+      (sAlgHandler handler)
+      propName
+      (castPtr propValue)
+      propSize
+      pcbResult
+      0
+    when (status < 0) $
+      fail $ "cannot retrieve " ++ propertyName prop ++ " property"
+    cbResult <- peek pcbResult
+    when (propSize /= cbResult) $
+      fail "BCryptGetProperty expected output type's and retrieved one's size are not match"
+    peek propValue
