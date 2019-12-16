@@ -13,6 +13,7 @@ import System.Win32.Types
 type ULONG = Word32
 type BCRYPT_HANDLE = Ptr ()
 type BCRYPT_ALG_HANDLE = Ptr ()
+type BCRYPT_KEY_HANDLE = Ptr ()
 type NTSTATUS = Int32
 
 -- NTSTATUS BCryptOpenAlgorithmProvider(
@@ -55,4 +56,32 @@ foreign import stdcall unsafe "BCryptGetProperty"
     -> ULONG
     -> Ptr ULONG
     -> ULONG
+    -> IO NTSTATUS
+
+-- NTSTATUS BCryptGenerateSymmetricKey(
+--   BCRYPT_ALG_HANDLE hAlgorithm,
+--   BCRYPT_KEY_HANDLE *phKey,
+--   PUCHAR            pbKeyObject,
+--   ULONG             cbKeyObject,
+--   PUCHAR            pbSecret,
+--   ULONG             cbSecret,
+--   ULONG             dwFlags
+-- );
+foreign import stdcall unsafe "BCryptGenerateSymmetricKey"
+  c_BCryptGenerateSymmetricKey
+    :: BCRYPT_ALG_HANDLE
+    -> Ptr BCRYPT_KEY_HANDLE
+    -> PUCHAR
+    -> ULONG
+    -> PUCHAR
+    -> ULONG
+    -> ULONG
+    -> IO NTSTATUS
+
+-- NTSTATUS BCryptDestroyKey(
+--   BCRYPT_KEY_HANDLE hKey
+-- );
+foreign import stdcall unsafe "BCryptDestroyKey"
+  c_BCryptDestroyKey
+    :: BCRYPT_ALG_HANDLE
     -> IO NTSTATUS

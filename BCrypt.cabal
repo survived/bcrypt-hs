@@ -29,6 +29,7 @@ library
   default-extensions: LambdaCase
   build-depends:
       base >= 4.7 && < 5
+    , bytestring
     , Win32 >= 2
     , resourcet
   exposed-modules:

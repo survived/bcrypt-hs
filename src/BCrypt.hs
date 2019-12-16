@@ -1,17 +1,22 @@
 {-# LANGUAGE TypeFamilies, ScopedTypeVariables, FlexibleContexts #-}
 module BCrypt
   ( SymmetricAlgorithm(..)
-  , BCryptAlgImplProvider(..)
+  , AlgorithmImplProvider(..)
   , SymmetricAlgorithmHandler
   , openSymmetricAlgorithm
   , ObjectLengthProp(..)
+  , BCryptProperty
   , getAlgorithmProperty
+  , generateSymmetricKey
   ) where
 
+import Data.ByteString (ByteString, useAsCStringLen)
+import Data.Function (on)
 import Data.Word (Word, Word32)
 import Control.Arrow (second)
-import Control.Monad (when)
-import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate)
+import Control.Monad (join, when)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate, register, unprotect)
 
 import Foreign
 import Foreign.C.String
@@ -40,12 +45,12 @@ instance Show SymmetricAlgorithm where
     BCryptAlg3DES -> "3DES"
     BCryptAlg3DES112 -> "3DES_112"
 
-data BCryptAlgImplProvider
+data AlgorithmImplProvider
   = MsPrimitiveProvider
   | MsPlatformCryptoProvider
   | DefaultProvider
 
-bCryptAlgImplProviderToString :: BCryptAlgImplProvider -> Maybe String
+bCryptAlgImplProviderToString :: AlgorithmImplProvider -> Maybe String
 bCryptAlgImplProviderToString = \case
   MsPrimitiveProvider -> Just "Microsoft Primitive Provider"
   MsPlatformCryptoProvider -> Just "Microsoft Platform Crypto Provider"
@@ -53,11 +58,11 @@ bCryptAlgImplProviderToString = \case
 
 data SymmetricAlgorithmHandler = SymmetricAlgorithmHandler
   { sAlgHandlerAlg      :: SymmetricAlgorithm
-  , sAlgHandlerProvider :: BCryptAlgImplProvider
+  , sAlgHandlerProvider :: AlgorithmImplProvider
   , sAlgHandler         :: B.BCRYPT_ALG_HANDLE
   }
 
-openSymmetricAlgorithm :: MonadResource m => SymmetricAlgorithm -> BCryptAlgImplProvider -> m (ReleaseKey, SymmetricAlgorithmHandler)
+openSymmetricAlgorithm :: MonadResource m => SymmetricAlgorithm -> AlgorithmImplProvider -> m (ReleaseKey, SymmetricAlgorithmHandler)
 openSymmetricAlgorithm alg provider =
   second (SymmetricAlgorithmHandler alg provider) <$> allocate openAlgHandler closeAlgHandler
   where
@@ -113,3 +118,40 @@ getAlgorithmProperty handler prop =
     when (propSize /= cbResult) $
       fail "BCryptGetProperty expected output type's and retrieved one's size are not match"
     peek propValue
+
+data SymmetricKeyHandle = SymmetricKeyHandle
+  { symmetricKeyAlg :: SymmetricAlgorithm
+  , symmetricKeyProv :: AlgorithmImplProvider
+  , symmetricKeyHandle :: B.BCRYPT_KEY_HANDLE
+  }
+
+generateSymmetricKey :: MonadResource m => SymmetricAlgorithmHandler -> ByteString -> m (ReleaseKey, SymmetricKeyHandle)
+generateSymmetricKey alg privateKey = do
+  (objectSize :: B.ULONG) <- liftIO $ getAlgorithmProperty alg ObjectLengthProp
+  (releaseObject, objectPtr) <- allocate (mallocArray (fromIntegral objectSize)) free
+  (releaseKeyHandle, (status, keyHandle)) <- allocate (generateKey objectSize objectPtr) destroyKey
+  when (status < 0) $
+    fail "cannot generate a symmetric key"
+  -- guarantee that everything will be released in the right order:
+  release <- register . join $ ((>>) `on` (void . sequenceA)) <$> unprotect releaseKeyHandle <*> unprotect releaseObject
+  return (release, SymmetricKeyHandle (sAlgHandlerAlg alg) (sAlgHandlerProvider alg) keyHandle)
+  where
+  generateKey :: B.ULONG -> PUCHAR -> IO (B.NTSTATUS, B.BCRYPT_KEY_HANDLE)
+  generateKey objectSize objectPtr =
+    useAsCStringLen privateKey $ \(privateKeyPtr, privateKeyLen) ->
+    alloca $ \(keyPtr :: Ptr B.BCRYPT_KEY_HANDLE) -> do
+      status <- B.c_BCryptGenerateSymmetricKey
+        (sAlgHandler alg)
+        keyPtr
+        objectPtr
+        objectSize
+        (castPtr privateKeyPtr)
+        (fromIntegral privateKeyLen)
+        0
+      (,) status <$> peek keyPtr
+  destroyKey :: (B.NTSTATUS, B.BCRYPT_KEY_HANDLE) -> IO ()
+  destroyKey (status, keyHandle) =
+    when (status >= 0) $ do
+      destroyStatus <- B.c_BCryptDestroyKey keyHandle
+      when (destroyStatus < 0) $
+        fail "cannot destroy a symmetric key"
