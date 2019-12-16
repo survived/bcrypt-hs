@@ -9,4 +9,4 @@ main = hspec $
   describe "algorithm handler" $
     forM_ [minBound..maxBound] $ \alg ->
       context (show alg) $ it "acquirable"
-        (void . runResourceT $ openSymmetricEncriptionAlgorithm alg MsPrimitiveProvider :: IO ())
+        (void . runResourceT $ openSymmetricAlgorithm alg MsPrimitiveProvider :: IO ())

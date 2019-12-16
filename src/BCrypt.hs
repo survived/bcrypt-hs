@@ -1,9 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module BCrypt
-  ( BCryptSymAlg(..)
+  ( SymmetricAlgorithm(..)
   , BCryptAlgImplProvider(..)
-  , BCryptSymAlgHandler
-  , openSymmetricEncriptionAlgorithm
+  , SymmetricAlgorithmHandler
+  , openSymmetricAlgorithm
   ) where
 
 import Data.Word (Word, Word32)
@@ -16,8 +16,8 @@ import Foreign.C.String
 
 import qualified BCrypt.Bindings as B
 
--- | BCryptSymmetricEncriptionAlgorithm
-data BCryptSymAlg
+-- | Symmetric Encription Algorithm
+data SymmetricAlgorithm
   = BCryptAlgRC2
   | BCryptAlgRC4
   | BCryptAlgAES
@@ -27,7 +27,7 @@ data BCryptSymAlg
   | BCryptAlg3DES112
   deriving (Enum, Bounded)
 
-instance Show BCryptSymAlg where
+instance Show SymmetricAlgorithm where
   show = \case
     BCryptAlgRC2 -> "RC2"
     BCryptAlgRC4 -> "RC4"
@@ -48,15 +48,15 @@ bCryptAlgImplProviderToString = \case
   MsPlatformCryptoProvider -> Just "Microsoft Platform Crypto Provider"
   DefaultProvider -> Nothing
 
-data BCryptSymAlgHandler = BCryptSymAlgHandler
-  { sAlgHandlerAlg      :: BCryptSymAlg
+data SymmetricAlgorithmHandler = SymmetricAlgorithmHandler
+  { sAlgHandlerAlg      :: SymmetricAlgorithm
   , sAlgHandlerProvider :: BCryptAlgImplProvider
   , sAlgHandler         :: B.BCRYPT_ALG_HANDLE
   }
 
-openSymmetricEncriptionAlgorithm :: MonadResource m => BCryptSymAlg -> BCryptAlgImplProvider -> m (ReleaseKey, BCryptSymAlgHandler)
-openSymmetricEncriptionAlgorithm alg provider =
-  second (BCryptSymAlgHandler alg provider) <$> allocate openAlgHandler closeAlgHandler
+openSymmetricAlgorithm :: MonadResource m => SymmetricAlgorithm -> BCryptAlgImplProvider -> m (ReleaseKey, SymmetricAlgorithmHandler)
+openSymmetricAlgorithm alg provider =
+  second (SymmetricAlgorithmHandler alg provider) <$> allocate openAlgHandler closeAlgHandler
   where
   withCAlg, withCProvider :: (CWString -> IO a) -> IO a
   withCAlg = withCWString (show alg)
