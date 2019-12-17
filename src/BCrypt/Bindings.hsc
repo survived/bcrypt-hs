@@ -85,3 +85,29 @@ foreign import stdcall unsafe "BCryptDestroyKey"
   c_BCryptDestroyKey
     :: BCRYPT_ALG_HANDLE
     -> IO NTSTATUS
+
+-- NTSTATUS BCryptEncrypt(
+--   BCRYPT_KEY_HANDLE hKey,
+--   PUCHAR            pbInput,
+--   ULONG             cbInput,
+--   VOID              *pPaddingInfo,
+--   PUCHAR            pbIV,
+--   ULONG             cbIV,
+--   PUCHAR            pbOutput,
+--   ULONG             cbOutput,
+--   ULONG             *pcbResult,
+--   ULONG             dwFlags
+-- );
+foreign import stdcall unsafe "BCryptEncrypt"
+  c_BCryptEncrypt
+    :: BCRYPT_KEY_HANDLE
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ()
+    -> PUCHAR
+    -> ULONG
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ULONG
+    -> ULONG
+    -> IO NTSTATUS
