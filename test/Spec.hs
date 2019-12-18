@@ -24,8 +24,13 @@ main = hspec $ do
       (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
       _ <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
       return ()
+    it "produces aes key in ECB mode" . io . runResourceT $ do
+      (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
+      liftIO $ setAlgorithmProperty hAlg ChaingModeProp ChainingModeECB
+      _ <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
+      return ()
   around withAes128 $
-    describe "AES key handler" $ do
+    describe "AES key handler in ECB mode" $ do
       it "dedicates cipher length" $ \aes -> do
         let plaintextLen = 32
         ciphertextLen <- lookupCipherTextLength aes $ B.replicate plaintextLen 27
@@ -34,6 +39,12 @@ main = hspec $ do
         let plaintextLen = 32
         ciphertext <- encrypt aes $ B.replicate plaintextLen 27
         B.length ciphertext `shouldBe` plaintextLen
+      it "decrypts a block" $ \aes -> do
+        let plaintextLen = 32
+            plaintext = B.replicate plaintextLen 27
+        ciphertext <- encrypt aes plaintext
+        plaintext' <- decrypt aes ciphertext
+        plaintext' `shouldBe` plaintext
   describe "System certificate storage AES (requires MorjCert)" $ do
     it "Can be created" . io . runResourceT $
       void $ derivedAesFromCertName "MorjCert"
@@ -62,5 +73,6 @@ certificateException = const True
 withAes128 :: (SymmetricKeyHandle -> IO ()) -> IO ()
 withAes128 f = runResourceT $ do
   (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
+  liftIO $ setAlgorithmProperty hAlg ChaingModeProp ChainingModeECB
   (_, hKey) <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
   liftIO $ f hKey

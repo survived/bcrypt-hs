@@ -26,7 +26,8 @@ source-repository head
 library
   hs-source-dirs:
       src
-  default-extensions: LambdaCase
+  default-extensions:
+      LambdaCase, ScopedTypeVariables
   build-depends:
       base >= 4.7 && < 5
     , bytestring
@@ -35,6 +36,9 @@ library
     , transformers
   exposed-modules:
       BCrypt
+      BCrypt.Algorithm
+      BCrypt.Properties
+      BCrypt.Symmetric
       Certificate
   other-modules:
       BCrypt.Bindings

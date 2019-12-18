@@ -58,6 +58,22 @@ foreign import stdcall unsafe "BCryptGetProperty"
     -> ULONG
     -> IO NTSTATUS
 
+-- NTSTATUS BCryptSetProperty(
+--   BCRYPT_HANDLE hObject,
+--   LPCWSTR       pszProperty,
+--   PUCHAR        pbInput,
+--   ULONG         cbInput,
+--   ULONG         dwFlags
+-- );
+foreign import stdcall unsafe "BCryptSetProperty"
+  c_BCryptSetProperty
+    :: BCRYPT_HANDLE
+    -> LPCWSTR
+    -> PUCHAR
+    -> ULONG
+    -> ULONG
+    -> IO NTSTATUS
+
 -- NTSTATUS BCryptGenerateSymmetricKey(
 --   BCRYPT_ALG_HANDLE hAlgorithm,
 --   BCRYPT_KEY_HANDLE *phKey,
@@ -100,6 +116,32 @@ foreign import stdcall unsafe "BCryptDestroyKey"
 -- );
 foreign import stdcall unsafe "BCryptEncrypt"
   c_BCryptEncrypt
+    :: BCRYPT_KEY_HANDLE
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ()
+    -> PUCHAR
+    -> ULONG
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ULONG
+    -> ULONG
+    -> IO NTSTATUS
+
+-- NTSTATUS BCryptDecrypt(
+--   BCRYPT_KEY_HANDLE hKey,
+--   PUCHAR            pbInput,
+--   ULONG             cbInput,
+--   VOID              *pPaddingInfo,
+--   PUCHAR            pbIV,
+--   ULONG             cbIV,
+--   PUCHAR            pbOutput,
+--   ULONG             cbOutput,
+--   ULONG             *pcbResult,
+--   ULONG             dwFlags
+-- );
+foreign import stdcall unsafe "BCryptDecrypt"
+  c_BCryptDecrypt
     :: BCRYPT_KEY_HANDLE
     -> PUCHAR
     -> ULONG
