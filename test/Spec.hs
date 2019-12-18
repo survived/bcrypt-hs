@@ -23,8 +23,13 @@ main = hspec $ do
       (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
       _ <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
       return ()
+    it "produces aes key in EBC mode" . io . runResourceT $ do
+      (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
+      liftIO $ setAlgorithmProperty hAlg ChaingModeProp ChainingModeECB
+      _ <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
+      return ()
   around withAes128 $
-    describe "AES key handler" $ do
+    describe "AES key handler in EBC mode" $ do
       it "dedicates cipher length" $ \aes -> do
         let plaintextLen = 32
         ciphertextLen <- lookupCipherTextLength aes $ B.replicate plaintextLen 27
@@ -47,5 +52,6 @@ io = id
 withAes128 :: (SymmetricKeyHandle -> IO ()) -> IO ()
 withAes128 f = runResourceT $ do
   (_, hAlg) <- openSymmetricAlgorithm BCryptAlgAES MsPrimitiveProvider
+  liftIO $ setAlgorithmProperty hAlg ChaingModeProp ChainingModeECB
   (_, hKey) <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
   liftIO $ f hKey

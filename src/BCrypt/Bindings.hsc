@@ -58,6 +58,22 @@ foreign import stdcall unsafe "BCryptGetProperty"
     -> ULONG
     -> IO NTSTATUS
 
+-- NTSTATUS BCryptSetProperty(
+--   BCRYPT_HANDLE hObject,
+--   LPCWSTR       pszProperty,
+--   PUCHAR        pbInput,
+--   ULONG         cbInput,
+--   ULONG         dwFlags
+-- );
+foreign import stdcall unsafe "BCryptSetProperty"
+  c_BCryptSetProperty
+    :: BCRYPT_HANDLE
+    -> LPCWSTR
+    -> PUCHAR
+    -> ULONG
+    -> ULONG
+    -> IO NTSTATUS
+
 -- NTSTATUS BCryptGenerateSymmetricKey(
 --   BCRYPT_ALG_HANDLE hAlgorithm,
 --   BCRYPT_KEY_HANDLE *phKey,

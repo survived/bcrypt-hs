@@ -5,8 +5,13 @@ module BCrypt
   , SymmetricAlgorithmHandler
   , openSymmetricAlgorithm
   , ObjectLengthProp(..)
+  , ChaingModeProp(..)
+  , ChainingMode(..)
   , BCryptProperty
+  , PropertyGet
+  , PropertySet
   , getAlgorithmProperty
+  , setAlgorithmProperty
   , SymmetricKeyHandle
   , generateSymmetricKey
   , lookupCipherTextLength
@@ -120,6 +125,33 @@ instance BCryptProperty ObjectLengthProp where
   type PropertyValue ObjectLengthProp = DWORD
   propertyName _ = "ObjectLength"
 instance PropertyGet ObjectLengthProp
+
+data ChaingModeProp = ChaingModeProp
+
+data ChainingMode
+  = ChainingModeCBC
+  | ChainingModeCCM
+  | ChainingModeCFB
+  | ChainingModeECB
+  | ChainingModeGCM
+  | ChainingModeNA
+
+instance Show ChainingMode where
+  show = \case
+    ChainingModeCBC -> "ChainingModeCBC"
+    ChainingModeCCM -> "ChainingModeCCM"
+    ChainingModeCFB -> "ChainingModeCFB"
+    ChainingModeECB -> "ChainingModeECB"
+    ChainingModeGCM -> "ChainingModeGCM"
+    ChainingModeNA -> "ChainingModeN/A"
+
+instance BCryptProperty ChaingModeProp where
+  type PropertyValue ChaingModeProp = ChainingMode
+  propertyName _ = "ChainingMode"
+
+instance PropertySet ChaingModeProp where
+  marshalForward _ value f = withCWStringLen (show value) $ \(ptr, len) ->
+    f (castPtr ptr, fromIntegral len)
 
 getAlgorithmProperty
   :: forall p. (BCryptProperty p, PropertyGet p)
