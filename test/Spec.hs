@@ -7,7 +7,7 @@ import qualified Data.ByteString as B
 
 import Test.Hspec
 import BCrypt
-import Certificate (derivedAesFromCertName)
+import Certificate (derivedAesFromCertName, CertificateException)
 
 main :: IO ()
 main = hspec $ do
@@ -37,10 +37,27 @@ main = hspec $ do
   describe "System certificate storage AES (requires MorjCert)" $ do
     it "Can be created" . io . runResourceT $
       void $ derivedAesFromCertName "MorjCert"
+    it "Can fail to be created" $
+      runResourceT (derivedAesFromCertName "123123idontexisthahaha") `shouldThrow` certificateException
+    it "Encrypts a block" $ io . runResourceT $ do
+      (_, aes) <- derivedAesFromCertName "MorjCert"
+      let plaintextLen = 16
+      ciphertext <- liftIO . encrypt aes $ B.replicate plaintextLen 27
+      liftIO $ B.length ciphertext `shouldBe` plaintextLen
+    it "Encrypts predictably" . io . runResourceT $ do
+      let plaintext = "There's a cat prowling through the streets at night and she's black and her eyes are burning yellow fierce and bright the night "
+      (_, aes1) <- derivedAesFromCertName "MorjCert"
+      cipher1 <- liftIO . encrypt aes1 $ plaintext
+      (_, aes2) <- derivedAesFromCertName "MorjCert"
+      cipher2 <- liftIO . encrypt aes2 $ plaintext
+      liftIO $ cipher1 `shouldBe` cipher2
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a
 io = id
+
+certificateException :: CertificateException -> Bool
+certificateException = const True
 
 withAes128 :: (SymmetricKeyHandle -> IO ()) -> IO ()
 withAes128 f = runResourceT $ do
