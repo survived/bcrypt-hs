@@ -1,4 +1,4 @@
-module Bindings where
+module Certificate.Bindings where
 
 import Data.Bits       ((.|.))
 import Data.Word       (Word32)
@@ -120,3 +120,12 @@ acquireOnlyNCryptFlag = #{const CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG}
 
 data NCRYPT_KEY = NCRYPT_KEY
 type NCRYPT_KEY_HANDLE = Ptr NCRYPT_KEY
+
+
+-- SECURITY_STATUS NCryptFreeObject(
+--   NCRYPT_HANDLE hObject
+-- );
+foreign import ccall unsafe "NCryptFreeObject"
+  c_NCryptFreeObject
+    :: NCRYPT_KEY_HANDLE
+    -> IO DWORD

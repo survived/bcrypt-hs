@@ -32,10 +32,13 @@ library
     , bytestring
     , Win32 >= 2
     , resourcet
+    , transformers
   exposed-modules:
       BCrypt
+      Certificate
   other-modules:
       BCrypt.Bindings
+      Certificate.Bindings
   extra-libraries:
       bcrypt
   default-language: Haskell2010

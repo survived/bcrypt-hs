@@ -78,6 +78,6 @@ getPrivateKey cert = do
     releaseRequired <- lift $ peek keyReleaseRequiredPtr
     pure (keyHandle, releaseRequired)
   releaseKey <- register $ if releaseRequired
-    then pure () -- TODO: real destoying
+    then c_NCryptFreeObject >> pure ()
     else pure ()
   return (releaseKey, keyHandle)
