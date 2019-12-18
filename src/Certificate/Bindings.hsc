@@ -2,7 +2,7 @@ module Certificate.Bindings where
 
 import Data.Bits       ((.|.))
 import Data.Word       (Word32)
-import Foreign.C.Types (CChar)
+import Foreign.C.Types (CChar, CWchar)
 import Foreign.Ptr     (Ptr)
 
 #include <windows.h>
@@ -121,6 +121,8 @@ acquireOnlyNCryptFlag = #{const CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG}
 data NCRYPT_KEY = NCRYPT_KEY
 type NCRYPT_KEY_HANDLE = Ptr NCRYPT_KEY
 
+type SECURITY_STATUS = Word32
+
 
 -- SECURITY_STATUS NCryptFreeObject(
 --   NCRYPT_HANDLE hObject
@@ -128,4 +130,49 @@ type NCRYPT_KEY_HANDLE = Ptr NCRYPT_KEY
 foreign import ccall unsafe "NCryptFreeObject"
   c_NCryptFreeObject
     :: NCRYPT_KEY_HANDLE
-    -> IO DWORD
+    -> IO SECURITY_STATUS
+
+
+-- SECURITY_STATUS NCryptGetProperty(
+--   NCRYPT_HANDLE hObject,
+--   LPCWSTR       pszProperty,
+--   PBYTE         pbOutput,
+--   DWORD         cbOutput,
+--   DWORD*        pcbResult,
+--   DWORD         dwFlags
+-- );
+foreign import ccall unsafe "NCryptGetProperty"
+  c_NCryptGetProperty
+    :: NCRYPT_KEY_HANDLE
+    -> Ptr CWchar
+    -> Ptr a
+    -> DWORD
+    -> Ptr DWORD
+    -> DWORD
+    -> IO SECURITY_STATUS
+
+
+-- SECURITY_STATUS NCryptEncrypt(
+--   NCRYPT_KEY_HANDLE hKey,
+--   PBYTE             pbInput,
+--   DWORD             cbInput,
+--   VOID*             pPaddingInfo,
+--   PBYTE             pbOutput,
+--   DWORD             cbOutput,
+--   DWORD*            pcbResult,
+--   DWORD             dwFlags
+-- );
+foreign import ccall unsafe "NCryptEncrypt"
+  c_NCryptEncrypt
+    :: NCRYPT_KEY_HANDLE
+    -> Ptr inData
+    -> DWORD
+    -> Ptr nullptr
+    -> Ptr outData
+    -> DWORD
+    -> Ptr DWORD
+    -> DWORD
+    -> IO SECURITY_STATUS
+
+noPaddingFlag :: DWORD
+noPaddingFlag = #{const NCRYPT_NO_PADDING_FLAG}

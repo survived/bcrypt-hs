@@ -7,6 +7,7 @@ import qualified Data.ByteString as B
 
 import Test.Hspec
 import BCrypt
+import Certificate (derivedAesFromCertName)
 
 main :: IO ()
 main = hspec $ do
@@ -33,6 +34,9 @@ main = hspec $ do
         let plaintextLen = 32
         ciphertext <- encrypt aes $ B.replicate plaintextLen 27
         B.length ciphertext `shouldBe` plaintextLen
+  describe "System certificate storage AES (requires MorjCert)" $ do
+    it "Can be created" . io . runResourceT $
+      void $ derivedAesFromCertName "MorjCert"
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a
