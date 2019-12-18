@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, ScopedTypeVariables, FlexibleContexts, DefaultSignatures #-}
 module BCrypt
   ( SymmetricAlgorithm(..)
   , AlgorithmImplProvider(..)
@@ -24,6 +24,7 @@ import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate, regist
 
 import Foreign hiding (void)
 import Foreign.C.String
+import Foreign.C.Types
 import System.Win32.Types
 
 import qualified BCrypt.Bindings as B
@@ -95,6 +96,12 @@ openSymmetricAlgorithm alg provider =
 class BCryptProperty p where
   type PropertyValue p :: *
   propertyName :: p -> String
+  marshalBackward :: p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
+  default marshalBackward :: Storable (PropertyValue p) => p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
+  marshalBackward _ ptr size = do
+    when (fromIntegral size /= sizeOf (undefined :: PropertyValue p)) $
+      fail "property value has invalid size"
+    peek (castPtr ptr)
 
 data ObjectLengthProp = ObjectLengthProp
 instance BCryptProperty ObjectLengthProp where
@@ -102,26 +109,30 @@ instance BCryptProperty ObjectLengthProp where
   propertyName _ = "ObjectLength"
 
 getAlgorithmProperty
-  :: forall p. (BCryptProperty p, Storable (PropertyValue p))
+  :: forall p. BCryptProperty p
   => SymmetricAlgorithmHandler -> p -> IO (PropertyValue p)
 getAlgorithmProperty handler prop =
-  withCWString (propertyName prop) $ \propName ->
-  alloca $ \(propValue :: Ptr (PropertyValue p)) ->
-  alloca $ \(pcbResult :: Ptr B.ULONG) -> do
-    let propSize = fromIntegral $ sizeOf (undefined :: PropertyValue p)
-    status <- B.c_BCryptGetProperty
-      (sAlgHandler handler)
-      propName
-      (castPtr propValue)
-      propSize
-      pcbResult
-      0
+  withCWString (propertyName prop) $ \propName -> do
+    bufSize <- lookupSize propName
+    allocaArray (fromIntegral bufSize) $ \valueBuf -> do
+      getProp propName valueBuf bufSize
+      marshalBackward prop valueBuf bufSize
+  where
+  lookupSize :: Ptr CWchar -> IO B.ULONG
+  lookupSize propName = alloca $ \(pcbResult :: Ptr B.ULONG) -> do
+    status <- B.c_BCryptGetProperty (sAlgHandler handler) propName nullPtr 0 pcbResult 0
     when (status < 0) $
-      fail $ "cannot retrieve " ++ propertyName prop ++ " property"
-    cbResult <- peek pcbResult
-    when (propSize /= cbResult) $
-      fail "BCryptGetProperty expected output type's and retrieved one's size are not match"
-    peek propValue
+      fail "can't determinate length of property value"
+    peek pcbResult
+  getProp :: Ptr CWchar -> PUCHAR -> B.ULONG -> IO ()
+  getProp propName valueBuf valueBufSize = alloca $ \(pcbResult :: Ptr B.ULONG) -> do
+    status <- B.c_BCryptGetProperty (sAlgHandler handler) propName valueBuf valueBufSize pcbResult 0
+    when (status < 0) $
+      fail "can't get property"
+    actualBufSize <- peek pcbResult
+    when (valueBufSize /= actualBufSize) $
+      fail "expected property value size doesn't match actual property value size"
+    return ()
 
 data SymmetricKeyHandle = SymmetricKeyHandle
   { symmetricKeyAlg :: SymmetricAlgorithm
