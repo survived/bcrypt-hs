@@ -124,6 +124,8 @@ deriveAes ncryptKey = do
   return r
 
 
+-- | A chain of three function above: gets a certificate with given name, and
+-- derives an AES key based on certificate's private key
 derivedAesFromCertName :: (MonadResource m, MonadIO m)
                        => String -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
 derivedAesFromCertName name = do
