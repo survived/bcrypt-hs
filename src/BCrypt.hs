@@ -96,27 +96,33 @@ openSymmetricAlgorithm alg provider =
 class BCryptProperty p where
   type PropertyValue p :: *
   propertyName :: p -> String
-  marshalBackward :: p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
-  marshalForward  :: p -> PropertyValue p -> ((PUCHAR, B.ULONG) -> IO a) -> IO a
 
+class BCryptProperty p => PropertyGet p where
+  marshalBackward :: p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
   default marshalBackward :: Storable (PropertyValue p) => p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
   marshalBackward _ ptr size = do
     when (fromIntegral size /= sizeOf (undefined :: PropertyValue p)) $
       fail "property value has invalid size"
     peek (castPtr ptr)
+
+class BCryptProperty p => PropertySet p where
+  marshalForward  :: p -> PropertyValue p -> ((PUCHAR, B.ULONG) -> IO a) -> IO a
   default marshalForward :: Storable (PropertyValue p) => p -> PropertyValue p -> ((PUCHAR, B.ULONG) -> IO a) -> IO a
   marshalForward _ val f =
     alloca $ \(ptr :: Ptr (PropertyValue p)) -> do
       poke ptr val
       f (castPtr ptr, fromIntegral $ sizeOf val)
 
+
 data ObjectLengthProp = ObjectLengthProp
+
 instance BCryptProperty ObjectLengthProp where
   type PropertyValue ObjectLengthProp = DWORD
   propertyName _ = "ObjectLength"
+instance PropertyGet ObjectLengthProp
 
 getAlgorithmProperty
-  :: forall p. BCryptProperty p
+  :: forall p. (BCryptProperty p, PropertyGet p)
   => SymmetricAlgorithmHandler -> p -> IO (PropertyValue p)
 getAlgorithmProperty handler prop =
   withCWString (propertyName prop) $ \propName -> do
@@ -142,7 +148,7 @@ getAlgorithmProperty handler prop =
     return ()
 
 setAlgorithmProperty
-  :: forall p. BCryptProperty p
+  :: forall p. (BCryptProperty p, PropertySet p)
   => SymmetricAlgorithmHandler -> p -> PropertyValue p -> IO ()
 setAlgorithmProperty handler prop propVal =
   withCWString (propertyName prop) $ \propName ->
