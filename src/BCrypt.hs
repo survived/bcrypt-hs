@@ -11,6 +11,7 @@ module BCrypt
   , generateSymmetricKey
   , lookupCipherTextLength
   , encrypt
+  , decrypt
   ) where
 
 import Data.ByteString (ByteString, useAsCStringLen, packCStringLen)
@@ -181,5 +182,30 @@ encrypt key plaintext = do
         fail "can't encrypt data"
       resultCipherLen <- peek cipherLen'
       when (cipherLen /= resultCipherLen) $
-        fail "cipher length is not what expected"
+        fail "ciphertext length is not what expected"
+      packCStringLen (castPtr cipher, fromIntegral cipherLen)
+
+lookupPlainTextLength :: SymmetricKeyHandle -> ByteString -> IO DWORD
+lookupPlainTextLength key plaintext =
+  useAsCStringLen plaintext $ \(plaintextPtr, plaintextLen) ->
+  alloca $ \(cipherLen :: Ptr DWORD) -> do
+    status <- B.c_BCryptDecrypt (symmetricKeyHandle key) (castPtr plaintextPtr) (fromIntegral plaintextLen)
+                              nullPtr nullPtr 0 nullPtr 0 cipherLen 0
+    when (status < 0) $
+      fail "can't determinate length of ciphertext"
+    peek cipherLen
+
+decrypt :: SymmetricKeyHandle -> ByteString -> IO ByteString
+decrypt key plaintext = do
+  cipherLen <- lookupPlainTextLength key plaintext
+  useAsCStringLen plaintext $ \(plaintextPtr, plaintextLen) ->
+    allocaArray (fromIntegral cipherLen) $ \(cipher :: PUCHAR) ->
+    alloca $ \cipherLen' -> do
+      status <- B.c_BCryptDecrypt (symmetricKeyHandle key) (castPtr plaintextPtr) (fromIntegral plaintextLen)
+                                nullPtr nullPtr 0 cipher cipherLen cipherLen' 0
+      when (status < 0) $
+        fail "can't decrypt data"
+      resultCipherLen <- peek cipherLen'
+      when (cipherLen /= resultCipherLen) $
+        fail "plaintext length is not what expected"
       packCStringLen (castPtr cipher, fromIntegral cipherLen)

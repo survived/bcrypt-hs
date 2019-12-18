@@ -33,6 +33,12 @@ main = hspec $ do
         let plaintextLen = 32
         ciphertext <- encrypt aes $ B.replicate plaintextLen 27
         B.length ciphertext `shouldBe` plaintextLen
+      it "decrypts a block" $ \aes -> do
+        let plaintextLen = 32
+            plaintext = B.replicate plaintextLen 27
+        ciphertext <- encrypt aes plaintext
+        plaintext' <- decrypt aes ciphertext
+        plaintext' `shouldBe` plaintext
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a

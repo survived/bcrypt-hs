@@ -111,3 +111,29 @@ foreign import stdcall unsafe "BCryptEncrypt"
     -> Ptr ULONG
     -> ULONG
     -> IO NTSTATUS
+
+-- NTSTATUS BCryptDecrypt(
+--   BCRYPT_KEY_HANDLE hKey,
+--   PUCHAR            pbInput,
+--   ULONG             cbInput,
+--   VOID              *pPaddingInfo,
+--   PUCHAR            pbIV,
+--   ULONG             cbIV,
+--   PUCHAR            pbOutput,
+--   ULONG             cbOutput,
+--   ULONG             *pcbResult,
+--   ULONG             dwFlags
+-- );
+foreign import stdcall unsafe "BCryptDecrypt"
+  c_BCryptDecrypt
+    :: BCRYPT_KEY_HANDLE
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ()
+    -> PUCHAR
+    -> ULONG
+    -> PUCHAR
+    -> ULONG
+    -> Ptr ULONG
+    -> ULONG
+    -> IO NTSTATUS
