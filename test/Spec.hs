@@ -3,6 +3,7 @@
 import Control.Monad (forM_, void)
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.IO.Class (liftIO)
+import Data.Monoid ((<>))
 import qualified Data.ByteString as B
 
 import Test.Hspec
@@ -32,19 +33,26 @@ main = hspec $ do
   around withAes128 $
     describe "AES key handler in ECB mode" $ do
       it "dedicates cipher length" $ \aes -> do
-        let plaintextLen = 32
+        let plaintextLen = 16
         ciphertextLen <- lookupCipherTextLength aes $ B.replicate plaintextLen 27
         ciphertextLen `shouldBe` fromIntegral plaintextLen
       it "encrypts a block" $ \aes -> do
-        let plaintextLen = 32
+        let plaintextLen = 16
         ciphertext <- encrypt aes $ B.replicate plaintextLen 27
         B.length ciphertext `shouldBe` plaintextLen
       it "decrypts a block" $ \aes -> do
-        let plaintextLen = 32
+        let plaintextLen = 16
             plaintext = B.replicate plaintextLen 27
         ciphertext <- encrypt aes plaintext
         plaintext' <- decrypt aes ciphertext
         plaintext' `shouldBe` plaintext
+      it "doesn't mix blocks" $ \aes -> do
+        let block = "1234567890123456"
+        let plaintext = block <> block
+        ciphertext <- encrypt aes plaintext
+        let part1 = B.drop 16 ciphertext
+        let part2 = B.take 16 ciphertext
+        part1 `shouldBe` part2
   describe "System certificate storage AES (requires MorjCert)" $ do
     it "Can be created" . io . runResourceT $
       void $ derivedAesFromCertName "MorjCert"
@@ -58,10 +66,18 @@ main = hspec $ do
     it "Encrypts predictably" . io . runResourceT $ do
       let plaintext = "There's a cat prowling through the streets at night and she's black and her eyes are burning yellow fierce and bright the night "
       (_, aes1) <- derivedAesFromCertName "MorjCert"
-      cipher1 <- liftIO . encrypt aes1 $ plaintext
+      ciphertext <- liftIO . encrypt aes1 $ plaintext
       (_, aes2) <- derivedAesFromCertName "MorjCert"
-      cipher2 <- liftIO . encrypt aes2 $ plaintext
-      liftIO $ cipher1 `shouldBe` cipher2
+      plaintext' <- liftIO . decrypt aes2 $ ciphertext
+      liftIO $ plaintext `shouldBe` plaintext'
+    it "doesn't mix blocks" . io . runResourceT $ do
+      (_, aes) <- derivedAesFromCertName "MorjCert"
+      let block = "1234567890123456"
+      let plaintext = block <> block
+      ciphertext <- liftIO . encrypt aes $ plaintext
+      let part1 = B.drop 16 ciphertext
+      let part2 = B.take 16 ciphertext
+      liftIO $ part1 `shouldBe` part2
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a

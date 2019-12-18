@@ -8,7 +8,7 @@ module Certificate
 , CertificateException
 ) where
 
-import BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey)
+import BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
 import Control.Exception            (Exception, throw, bracket)
 import Control.Monad                (when)
 import Control.Monad.IO.Class       (MonadIO, liftIO)
@@ -98,6 +98,7 @@ deriveAes :: (MonadResource m, MonadIO m)
           => NCRYPT_KEY_HANDLE -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
 deriveAes ncryptKey = do
   (algRelease, bcryptAlg) <- openSymmetricAlgorithm BCrypt.BCryptAlgAES BCrypt.MsPrimitiveProvider
+  liftIO $ setAlgorithmProperty bcryptAlg BCrypt.ChaingModeProp BCrypt.ChainingModeECB
   keyMaterial <- liftIO . evalContT $ do
     retSizePtr <- ContT alloca
     --
