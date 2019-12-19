@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Exception.Safe (finally)
 import Control.Monad (forM_, void)
 import Control.Monad.Trans.Resource (runResourceT, unprotect)
 import Control.Monad.IO.Class (liftIO)
@@ -87,9 +88,9 @@ main = hspec $ do
             Just key' -> pure (key', aes)
             Nothing -> error "Just created cipher has somehow been released"
       let plaintextLen = 16
-      ciphertext <- encrypt aes $ B.replicate plaintextLen 27
+      ciphertext <- encrypt aes (B.replicate plaintextLen 27)
+        `finally` releaseAction
       B.length ciphertext `shouldBe` plaintextLen
-      _ <- releaseAction
       return ()
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m

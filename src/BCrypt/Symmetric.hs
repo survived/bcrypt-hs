@@ -35,7 +35,7 @@ generateSymmetricKey alg privateKey = do
   (releaseKeyHandle, (status, keyHandle)) <- allocate (generateKey objectSize objectPtr) destroyKey
   validateNTStatus "can't set property" status
   -- guarantee that everything will be released in the right order:
-  release <- register . join $ ((>>) `on` (void . sequenceA)) <$> unprotect releaseKeyHandle <*> unprotect releaseObject
+  release <- register =<< ((>>) `on` (void . sequenceA)) <$> unprotect releaseKeyHandle <*> unprotect releaseObject
   return (release, SymmetricKeyHandle (sAlgHandlerAlg alg) (sAlgHandlerProvider alg) keyHandle)
   where
   generateKey :: ULONG -> PUCHAR -> IO (NTSTATUS, B.BCRYPT_KEY_HANDLE)
