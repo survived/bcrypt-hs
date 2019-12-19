@@ -5,3 +5,4 @@ module BCrypt
 import BCrypt.Algorithm as Reexport
 import BCrypt.Properties as Reexport
 import BCrypt.Symmetric as Reexport
+import BCrypt.Types as Reexport

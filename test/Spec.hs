@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad (forM_, void)
-import Control.Monad.Trans.Resource (runResourceT)
+import Control.Monad.Trans.Resource (runResourceT, unprotect)
 import Control.Monad.IO.Class (liftIO)
 import Data.Monoid ((<>))
 import qualified Data.ByteString as B
@@ -78,6 +78,19 @@ main = hspec $ do
       let part1 = B.drop 16 ciphertext
       let part2 = B.take 16 ciphertext
       liftIO $ part1 `shouldBe` part2
+    it "can be got out of resourceT" $ do
+      (releaseAction, aes) <- runResourceT $ do
+          -- extract them from resourceT as we can't exist inside it
+          (key, aes) <- derivedAesFromCertName "MorjCert"
+          mbRelease <- unprotect key
+          case mbRelease of
+            Just key' -> pure (key', aes)
+            Nothing -> error "Just created cipher has somehow been released"
+      let plaintextLen = 16
+      ciphertext <- encrypt aes $ B.replicate plaintextLen 27
+      B.length ciphertext `shouldBe` plaintextLen
+      _ <- releaseAction
+      return ()
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a

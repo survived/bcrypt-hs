@@ -17,6 +17,7 @@ import Foreign.Storable (Storable, sizeOf, peek, poke)
 import System.Win32.Types (PUCHAR, DWORD)
 
 import BCrypt.Algorithm (SymmetricAlgorithmHandler, sAlgHandler)
+import BCrypt.Types
 
 import qualified BCrypt.Bindings as B
 
@@ -25,16 +26,16 @@ class BCryptProperty p where
   propertyName :: p -> String
 
 class BCryptProperty p => PropertyGet p where
-  marshalBackward :: p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
-  default marshalBackward :: Storable (PropertyValue p) => p -> PUCHAR -> B.ULONG -> IO (PropertyValue p)
+  marshalBackward :: p -> PUCHAR -> ULONG -> IO (PropertyValue p)
+  default marshalBackward :: Storable (PropertyValue p) => p -> PUCHAR -> ULONG -> IO (PropertyValue p)
   marshalBackward _ ptr size = do
     when (fromIntegral size /= sizeOf (undefined :: PropertyValue p)) $
       fail "property value has invalid size"
     peek (castPtr ptr)
 
 class BCryptProperty p => PropertySet p where
-  marshalForward  :: p -> PropertyValue p -> ((PUCHAR, B.ULONG) -> IO a) -> IO a
-  default marshalForward :: Storable (PropertyValue p) => p -> PropertyValue p -> ((PUCHAR, B.ULONG) -> IO a) -> IO a
+  marshalForward  :: p -> PropertyValue p -> ((PUCHAR, ULONG) -> IO a) -> IO a
+  default marshalForward :: Storable (PropertyValue p) => p -> PropertyValue p -> ((PUCHAR, ULONG) -> IO a) -> IO a
   marshalForward _ val f =
     alloca $ \(ptr :: Ptr (PropertyValue p)) -> do
       poke ptr val
@@ -88,17 +89,15 @@ getAlgorithmProperty handler prop =
       getProp propName valueBuf bufSize
       marshalBackward prop valueBuf bufSize
   where
-  lookupSize :: Ptr CWchar -> IO B.ULONG
-  lookupSize propName = alloca $ \(pcbResult :: Ptr B.ULONG) -> do
-    status <- B.c_BCryptGetProperty (sAlgHandler handler) propName nullPtr 0 pcbResult 0
-    when (status < 0) $
-      fail "can't determinate length of property value"
+  lookupSize :: Ptr CWchar -> IO ULONG
+  lookupSize propName = alloca $ \(pcbResult :: Ptr ULONG) -> do
+    B.c_BCryptGetProperty (sAlgHandler handler) propName nullPtr 0 pcbResult 0
+      >>= validateNTStatus "can't determinate length of property value"
     peek pcbResult
-  getProp :: Ptr CWchar -> PUCHAR -> B.ULONG -> IO ()
-  getProp propName valueBuf valueBufSize = alloca $ \(pcbResult :: Ptr B.ULONG) -> do
-    status <- B.c_BCryptGetProperty (sAlgHandler handler) propName valueBuf valueBufSize pcbResult 0
-    when (status < 0) $
-      fail "can't get property"
+  getProp :: Ptr CWchar -> PUCHAR -> ULONG -> IO ()
+  getProp propName valueBuf valueBufSize = alloca $ \(pcbResult :: Ptr ULONG) -> do
+    B.c_BCryptGetProperty (sAlgHandler handler) propName valueBuf valueBufSize pcbResult 0
+      >>= validateNTStatus "can't get property"
     actualBufSize <- peek pcbResult
     when (valueBufSize /= actualBufSize) $
       fail "expected property value size doesn't match actual property value size"
@@ -109,8 +108,6 @@ setAlgorithmProperty
   => SymmetricAlgorithmHandler -> p -> PropertyValue p -> IO ()
 setAlgorithmProperty handler prop propVal =
   withCWString (propertyName prop) $ \propName ->
-  marshalForward prop propVal $ \(buf, bufSize) -> do
-    status <- B.c_BCryptSetProperty (sAlgHandler handler) propName buf bufSize 0
-    when (status < 0) $
-      fail "can't set property"
-    return ()
+  marshalForward prop propVal $ \(buf, bufSize) ->
+    B.c_BCryptSetProperty (sAlgHandler handler) propName buf bufSize 0
+      >>= validateNTStatus "can't set property"

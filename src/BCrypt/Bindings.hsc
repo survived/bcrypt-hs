@@ -10,11 +10,11 @@ import Foreign.C.String
 import System.IO.Unsafe
 import System.Win32.Types
 
-type ULONG = Word32
+import BCrypt.Types
+
 type BCRYPT_HANDLE = Ptr ()
 type BCRYPT_ALG_HANDLE = Ptr ()
 type BCRYPT_KEY_HANDLE = Ptr ()
-type NTSTATUS = Int32
 
 -- NTSTATUS BCryptOpenAlgorithmProvider(
 --   BCRYPT_ALG_HANDLE *phAlgorithm,

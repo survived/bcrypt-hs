@@ -18,6 +18,7 @@ import Foreign.C.String (CWString, withCWString)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Storable (peek)
 
+import BCrypt.Types
 import qualified BCrypt.Bindings as B
 
 -- | Symmetric Encription Algorithm
@@ -73,13 +74,11 @@ openSymmetricAlgorithm alg provider =
     alloca $ \(handler :: Ptr B.BCRYPT_ALG_HANDLE) ->
     withCAlg $ \c_alg ->
     withCProvider $ \c_provider -> do
-      status <- B.c_BCryptOpenAlgorithmProvider handler c_alg c_provider 0
-      when (status < 0) $
-        fail "cannot open alg"
+      B.c_BCryptOpenAlgorithmProvider handler c_alg c_provider 0
+        >>= validateNTStatus "cannot open alg"
       peek handler
 
   closeAlgHandler :: B.BCRYPT_ALG_HANDLE -> IO ()
-  closeAlgHandler handler = do
-    status <- B.c_BCryptCloseAlgorithmProvider handler 0
-    when (status < 0) $
-      fail "cannot open alg"
+  closeAlgHandler handler =
+    B.c_BCryptCloseAlgorithmProvider handler 0
+      >>= validateNTStatus "cannot close alg"
