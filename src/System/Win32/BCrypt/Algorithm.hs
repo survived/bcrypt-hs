@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module BCrypt.Algorithm
+module System.Win32.BCrypt.Algorithm
   ( SymmetricAlgorithm(..)
   , AlgorithmImplProvider(..)
   , SymmetricAlgorithmHandler
@@ -18,8 +18,8 @@ import Foreign.C.String (CWString, withCWString)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Storable (peek)
 
-import BCrypt.Types
-import qualified BCrypt.Bindings as B
+import System.Win32.BCrypt.Types
+import qualified System.Win32.BCrypt.Bindings as B
 
 -- | Symmetric Encription Algorithm
 data SymmetricAlgorithm

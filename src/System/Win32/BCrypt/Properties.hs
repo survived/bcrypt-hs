@@ -1,5 +1,5 @@
 {-# LANGUAGE DefaultSignatures, ScopedTypeVariables, TypeFamilies, FlexibleContexts #-}
-module BCrypt.Properties
+module System.Win32.BCrypt.Properties
   ( BCryptProperty, PropertyGet, PropertySet
   , ObjectLengthProp(..)
   , ChaingModeProp(..), ChainingMode(..)
@@ -16,10 +16,10 @@ import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (Storable, sizeOf, peek, poke)
 import System.Win32.Types (PUCHAR, DWORD)
 
-import BCrypt.Algorithm (SymmetricAlgorithmHandler, sAlgHandler)
-import BCrypt.Types
+import System.Win32.BCrypt.Algorithm (SymmetricAlgorithmHandler, sAlgHandler)
+import System.Win32.BCrypt.Types
 
-import qualified BCrypt.Bindings as B
+import qualified System.Win32.BCrypt.Bindings as B
 
 class BCryptProperty p where
   type PropertyValue p :: *

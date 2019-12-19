@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Certificate
+module System.Win32.Certificate
 ( getCertByName
 , getPrivateKey
 , deriveAes
@@ -8,7 +8,7 @@ module Certificate
 , CertificateException
 ) where
 
-import BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
+import System.Win32.BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
 import Control.Exception            (Exception, throw, bracket)
 import Control.Monad                (when)
 import Control.Monad.IO.Class       (MonadIO, liftIO)
@@ -23,9 +23,9 @@ import Foreign.Marshal.Alloc        (free, malloc, mallocBytes, allocaBytes, all
 import Foreign.Ptr                  (Ptr, nullPtr)
 import Foreign.Storable             (peek, poke, Storable)
 
-import qualified BCrypt
+import qualified System.Win32.BCrypt as BCrypt
 
-import Certificate.Bindings
+import System.Win32.Certificate.Bindings
 
 
 newtype CertificateException = CertificateException {what :: String}

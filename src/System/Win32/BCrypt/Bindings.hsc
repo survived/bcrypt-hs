@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module BCrypt.Bindings where
+module System.Win32.BCrypt.Bindings where
 
 #include <windows.h>
 #include <bcrypt.h>
@@ -10,7 +10,7 @@ import Foreign.C.String
 import System.IO.Unsafe
 import System.Win32.Types
 
-import BCrypt.Types
+import System.Win32.BCrypt.Types
 
 type BCRYPT_HANDLE = Ptr ()
 type BCRYPT_ALG_HANDLE = Ptr ()

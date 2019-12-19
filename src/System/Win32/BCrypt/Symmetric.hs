@@ -1,4 +1,4 @@
-module BCrypt.Symmetric
+module System.Win32.BCrypt.Symmetric
   ( SymmetricKeyHandle
   , symmetricKeyAlg, symmetricKeyProv, symmetricKeyHandle
   , generateSymmetricKey
@@ -17,10 +17,10 @@ import Foreign.Ptr (Ptr, castPtr, nullPtr)
 import Foreign.Storable (peek)
 import System.Win32.Types (PUCHAR, DWORD)
 
-import BCrypt.Algorithm (AlgorithmImplProvider, SymmetricAlgorithm, SymmetricAlgorithmHandler, sAlgHandler, sAlgHandlerAlg, sAlgHandlerProvider)
-import BCrypt.Properties (ObjectLengthProp(..), getAlgorithmProperty)
-import BCrypt.Types
-import qualified BCrypt.Bindings as B
+import System.Win32.BCrypt.Algorithm (AlgorithmImplProvider, SymmetricAlgorithm, SymmetricAlgorithmHandler, sAlgHandler, sAlgHandlerAlg, sAlgHandlerProvider)
+import System.Win32.BCrypt.Properties (ObjectLengthProp(..), getAlgorithmProperty)
+import System.Win32.BCrypt.Types
+import qualified System.Win32.BCrypt.Bindings as B
 
 data SymmetricKeyHandle = SymmetricKeyHandle
   { symmetricKeyAlg :: SymmetricAlgorithm

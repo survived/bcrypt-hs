@@ -1,4 +1,4 @@
-module BCrypt.Types where
+module System.Win32.BCrypt.Types where
 
 import Control.Exception.Safe
 import Data.Int (Int32)

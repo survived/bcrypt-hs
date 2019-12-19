@@ -8,8 +8,8 @@ import Data.Monoid ((<>))
 import qualified Data.ByteString as B
 
 import Test.Hspec
-import BCrypt
-import Certificate (derivedAesFromCertName, CertificateException)
+import System.Win32.BCrypt
+import System.Win32.Certificate (derivedAesFromCertName, CertificateException)
 
 main :: IO ()
 main = hspec $ do
