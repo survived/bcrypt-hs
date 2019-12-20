@@ -23,6 +23,11 @@ source-repository head
   type: git
   location: https://github.com/githubuser/WinCrypt
 
+flag trace-bindings
+  description: Trace binding calls
+  manual: True
+  default: False
+
 library
   hs-source-dirs:
       src
@@ -44,12 +49,17 @@ library
       System.Win32.Certificate
   other-modules:
       System.Win32.BCrypt.Bindings
-      System.Win32.BCrypt.Bindings.Internal
+      System.Win32.BCrypt.Bindings.Externals
+      System.Win32.BCrypt.Bindings.Trace
       System.Win32.Certificate.Bindings
       System.Win32.Certificate.Bindings.Externals
+      System.Win32.Certificate.Bindings.Trace
   extra-libraries:
       bcrypt ncrypt Crypt32
   default-language: Haskell2010
+  if flag(trace-bindings) {
+    cpp-options: -DTRACE
+  }
 
 test-suite WinCrypt-test
   type: exitcode-stdio-1.0

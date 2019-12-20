@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module System.Win32.BCrypt.Bindings.Internal where
+module System.Win32.BCrypt.Bindings.Externals where
 
 #include <windows.h>
 #include <bcrypt.h>
