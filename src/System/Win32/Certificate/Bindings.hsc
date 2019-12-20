@@ -22,7 +22,7 @@ type HCERTSTORE = Ptr CERTSTORE
 --   HCRYPTPROV_LEGACY hProv,
 --   LPCSTR            szSubsystemProtocol
 -- );
-foreign import stdcall unsafe "CertOpenSystemStoreA"
+foreign import stdcall "CertOpenSystemStoreA"
   c_CertOpenSystemStoreA
     :: Ptr a -- nullptr_t actually
     -> Ptr CChar -- should be "MY\0"
@@ -32,7 +32,7 @@ foreign import stdcall unsafe "CertOpenSystemStoreA"
 --   HCERTSTORE hCertStore,
 --   DWORD      dwFlags
 -- );
-foreign import stdcall unsafe "CertCloseStore"
+foreign import stdcall "CertCloseStore"
   c_CertCloseStore
     :: HCERTSTORE
     -> DWORD
@@ -52,7 +52,7 @@ type PCCERT_CONTEXT = Ptr CCERT_CONTEXT
 --   const void*    pvFindPara,
 --   PCCERT_CONTEXT pPrevCertContext
 -- );
-foreign import stdcall unsafe "CertFindCertificateInStore"
+foreign import stdcall "CertFindCertificateInStore"
   c_CertFindCertificateInStore
     :: HCERTSTORE
     -> DWORD
@@ -72,7 +72,7 @@ certFriendlyNamePropId = #{const CERT_FRIENDLY_NAME_PROP_ID}
 -- BOOL CertFreeCertificateContext(
 --   PCCERT_CONTEXT pCertContext
 -- );
-foreign import stdcall unsafe "CertFreeCertificateContext"
+foreign import stdcall "CertFreeCertificateContext"
   c_CertFreeCertificateContext
     :: PCCERT_CONTEXT
     -> IO Bool
@@ -86,7 +86,7 @@ foreign import stdcall unsafe "CertFreeCertificateContext"
 --   void*          pvData,
 --   DWORD*         pcbData
 -- );
-foreign import stdcall unsafe "CertGetCertificateContextProperty"
+foreign import stdcall "CertGetCertificateContextProperty"
   c_CertGetCertificateContextProperty
     :: PCCERT_CONTEXT
     -> DWORD
@@ -102,7 +102,7 @@ foreign import stdcall unsafe "CertGetCertificateContextProperty"
 --   DWORD*                          pdwKeySpec,
 --   BOOL*                           pfCallerFreeProvOrNCryptKey
 -- );
-foreign import stdcall unsafe "CryptAcquireCertificatePrivateKey"
+foreign import stdcall "CryptAcquireCertificatePrivateKey"
   c_CryptAcquireCertificatePrivateKey
     :: PCCERT_CONTEXT
     -> DWORD
@@ -127,7 +127,7 @@ type SECURITY_STATUS = Word32
 -- SECURITY_STATUS NCryptFreeObject(
 --   NCRYPT_HANDLE hObject
 -- );
-foreign import stdcall unsafe "NCryptFreeObject"
+foreign import stdcall "NCryptFreeObject"
   c_NCryptFreeObject
     :: NCRYPT_KEY_HANDLE
     -> IO SECURITY_STATUS
@@ -141,7 +141,7 @@ foreign import stdcall unsafe "NCryptFreeObject"
 --   DWORD*        pcbResult,
 --   DWORD         dwFlags
 -- );
-foreign import stdcall unsafe "NCryptGetProperty"
+foreign import stdcall "NCryptGetProperty"
   c_NCryptGetProperty
     :: NCRYPT_KEY_HANDLE
     -> Ptr CWchar
@@ -162,7 +162,7 @@ foreign import stdcall unsafe "NCryptGetProperty"
 --   DWORD*            pcbResult,
 --   DWORD             dwFlags
 -- );
-foreign import stdcall unsafe "NCryptEncrypt"
+foreign import stdcall "NCryptEncrypt"
   c_NCryptEncrypt
     :: NCRYPT_KEY_HANDLE
     -> Ptr inData
