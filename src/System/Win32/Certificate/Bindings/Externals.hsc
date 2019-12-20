@@ -1,4 +1,4 @@
-module System.Win32.Certificate.Bindings where
+module System.Win32.Certificate.Bindings.Externals where
 
 import Data.Bits       ((.|.))
 import Data.Word       (Word32)

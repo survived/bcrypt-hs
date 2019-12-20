@@ -46,6 +46,7 @@ library
       System.Win32.BCrypt.Bindings
       System.Win32.BCrypt.Bindings.Internal
       System.Win32.Certificate.Bindings
+      System.Win32.Certificate.Bindings.Externals
   extra-libraries:
       bcrypt ncrypt Crypt32
   default-language: Haskell2010
