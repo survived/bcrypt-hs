@@ -92,6 +92,14 @@ main = hspec $ do
         `finally` releaseAction
       B.length ciphertext `shouldBe` plaintextLen
       return ()
+    it "Can be created really many times" $
+      repeatTimes 1000 $ do
+        io . runResourceT . void $ derivedAesFromCertName "MorjCert"
+
+
+repeatTimes :: Applicative m => Integer -> m () -> m ()
+repeatTimes 0 m = pure ()
+repeatTimes n m = m *> repeatTimes (n - 1) m
 
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a
