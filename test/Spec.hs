@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Exception.Safe (finally)
+import Control.Exception.Safe
 import Control.Monad (forM_, void)
 import Control.Monad.Trans.Resource (runResourceT, unprotect)
 import Control.Monad.IO.Class (liftIO)
@@ -93,8 +93,9 @@ main = hspec $ do
       B.length ciphertext `shouldBe` plaintextLen
       return ()
     it "Can be created really many times" $
-      repeatTimes 1000 $ do
-        io . runResourceT . void $ derivedAesFromCertName "MorjCert"
+      forM_ [0..1000] $ \i ->
+        handleAny (throw . GotExceptionOnNthIteration i) $
+          io . runResourceT . void $ derivedAesFromCertName "MorjCert"
 
 
 repeatTimes :: Applicative m => Integer -> m () -> m ()
@@ -114,3 +115,11 @@ withAes128 f = runResourceT $ do
   liftIO $ setAlgorithmProperty hAlg ChaingModeProp ChainingModeECB
   (_, hKey) <- generateSymmetricKey hAlg "0123456789abcdef0123456789abcdef"
   liftIO $ f hKey
+
+data GotExceptionOnNthIteration = GotExceptionOnNthIteration Int SomeException
+  deriving Typeable
+
+instance Exception GotExceptionOnNthIteration
+
+instance Show GotExceptionOnNthIteration where
+  show (GotExceptionOnNthIteration n e) = show n ++ " iteration failed with: " ++ show e
