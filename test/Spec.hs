@@ -97,11 +97,6 @@ main = hspec $ do
         handleAny (throw . GotExceptionOnNthIteration i) $
           io . runResourceT . void $ derivedAesFromCertName "MorjCert"
 
-
-repeatTimes :: Applicative m => Integer -> m () -> m ()
-repeatTimes 0 m = pure ()
-repeatTimes n m = m *> repeatTimes (n - 1) m
-
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a
 io = id
