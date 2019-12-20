@@ -44,6 +44,7 @@ library
       System.Win32.Certificate
   other-modules:
       System.Win32.BCrypt.Bindings
+      System.Win32.BCrypt.Bindings.Internal
       System.Win32.Certificate.Bindings
   extra-libraries:
       bcrypt ncrypt Crypt32
