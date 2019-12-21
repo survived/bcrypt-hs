@@ -64,12 +64,12 @@ data ChainingMode
 
 instance Show ChainingMode where
   show = \case
-    ChainingModeCBC -> "ChainingModeCBC"
-    ChainingModeCCM -> "ChainingModeCCM"
-    ChainingModeCFB -> "ChainingModeCFB"
-    ChainingModeECB -> "ChainingModeECB"
-    ChainingModeGCM -> "ChainingModeGCM"
-    ChainingModeNA  -> "ChainingModeN/A"
+    ChainingModeCBC -> "ChainingModeCBC\0"
+    ChainingModeCCM -> "ChainingModeCCM\0"
+    ChainingModeCFB -> "ChainingModeCFB\0"
+    ChainingModeECB -> "ChainingModeECB\0"
+    ChainingModeGCM -> "ChainingModeGCM\0"
+    ChainingModeNA  -> "ChainingModeN/A\0"
 
 instance BCryptProperty ChaingModeProp where
   type PropertyValue ChaingModeProp = ChainingMode
