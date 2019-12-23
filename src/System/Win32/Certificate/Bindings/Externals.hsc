@@ -2,6 +2,7 @@ module System.Win32.Certificate.Bindings.Externals where
 
 import Data.Bits       ((.|.))
 import Data.Word       (Word32)
+import Foreign         (intPtrToPtr)
 import Foreign.C.Types (CChar, CWchar)
 import Foreign.Ptr     (Ptr)
 

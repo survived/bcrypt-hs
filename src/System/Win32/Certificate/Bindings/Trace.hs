@@ -10,8 +10,8 @@ import System.Win32.Certificate.Bindings.Externals as Reexports
   , acquireOnlyNCryptFlag, noPaddingFlag )
 import qualified System.Win32.Certificate.Bindings.Externals as B
 
-c_CertOpenSystemStoreA =
-  hookAfter B.c_CertOpenSystemStoreA $ \status ->
+c_CertOpenStore =
+  hookAfter B.c_CertOpenStore $ \status ->
     putStrLn $ "c_CertOpenSystemStoreA returned " ++ show status
 c_CertCloseStore =
   hookAfter B.c_CertCloseStore $ \status ->

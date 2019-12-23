@@ -20,7 +20,7 @@ import Control.Monad.Trans.Resource ( MonadResource, ReleaseKey, register
 import Data.ByteString              (pack, useAsCString, packCStringLen)
 import Foreign.C.String             (peekCWString, withCString, withCWString)
 import Foreign.Marshal.Alloc        (free, malloc, mallocBytes, allocaBytes, alloca)
-import Foreign.Ptr                  (Ptr, nullPtr)
+import Foreign.Ptr                  (Ptr, castPtr, nullPtr)
 import Foreign.Storable             (peek, poke, Storable)
 
 import qualified System.Win32.BCrypt as BCrypt
