@@ -18,15 +18,26 @@ type DWORD = Word32
 data CERTSTORE = CERTSTORE -- msdn defines it as undefined type
 type HCERTSTORE = Ptr CERTSTORE
 
--- HCERTSTORE CertOpenSystemStoreA(
---   HCRYPTPROV_LEGACY hProv,
---   LPCSTR            szSubsystemProtocol
+-- HCERTSTORE WINAPI CertOpenStore(
+--   _In_       LPCSTR            lpszStoreProvider,
+--   _In_       DWORD             dwMsgAndCertEncodingType,
+--   _In_       HCRYPTPROV_LEGACY hCryptProv,
+--   _In_       DWORD             dwFlags,
+--   _In_ const void              *pvPara
 -- );
-foreign import stdcall "CertOpenSystemStoreA"
-  c_CertOpenSystemStoreA
-    :: Ptr a -- nullptr_t actually
-    -> Ptr CChar -- should be "MY\0"
+foreign import stdcall unsafe "CertOpenStore"
+  c_CertOpenStore
+    :: Ptr CChar
+    -> DWORD  -- always zero in our cases
+    -> Ptr () -- legacy, always NULL
+    -> DWORD
+    -> Ptr ()
     -> IO HCERTSTORE
+
+c_CERT_STORE_PROV_SYSTEM_A :: Ptr CChar
+c_CERT_STORE_PROV_SYSTEM_A = intPtrToPtr $ #{const CERT_STORE_PROV_SYSTEM_A}
+c_CERT_SYSTEM_STORE_LOCAL_MACHINE :: DWORD
+c_CERT_SYSTEM_STORE_LOCAL_MACHINE = #{const CERT_SYSTEM_STORE_LOCAL_MACHINE}
 
 -- BOOL CertCloseStore(
 --   HCERTSTORE hCertStore,

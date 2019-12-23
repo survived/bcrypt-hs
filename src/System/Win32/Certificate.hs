@@ -65,7 +65,7 @@ getCertByName name = allocate ( evalContT $ do
     freeMaybeCert (Just cert) = c_CertFreeCertificateContext cert >> pure ()
     --
     allocateStore = bracket ( do
-        store <- withCString "MY" (c_CertOpenSystemStoreA nullPtr)
+        store <- withCString "MY" (c_CertOpenStore c_CERT_STORE_PROV_SYSTEM_A 0 nullPtr c_CERT_SYSTEM_STORE_LOCAL_MACHINE . castPtr)
         when (store == nullPtr) (throw $ CertificateException "failed to open certificate store")
         pure store
       )
