@@ -1,12 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module System.Win32.Certificate
-( getCertByName
-, getPrivateKey
-, deriveAes
-, derivedAesFromCertName
-, CertificateException
-) where
+  ( getCertByName
+  , getPrivateKey
+  , deriveAes
+  , derivedAesFromCertName
+  , derivedAesFromCertHash
+  , CertificateException
+  ) where
 
 import System.Win32.BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
 import Control.Exception            (Exception, throw, bracket)
@@ -17,7 +18,7 @@ import Control.Monad.Trans.Cont     (ContT (..), evalContT)
 import Control.Monad.Trans.Resource ( MonadResource, ReleaseKey, register
                                     , allocate, runResourceT, release
                                     )
-import Data.ByteString              (pack, useAsCString, packCStringLen)
+import Data.ByteString              (ByteString, pack, useAsCString, packCStringLen)
 import Foreign.C.String             (peekCWString, withCString, withCWString)
 import Foreign.Marshal.Alloc        (free, malloc, mallocBytes, allocaBytes, alloca)
 import Foreign.Ptr                  (Ptr, castPtr, nullPtr)
@@ -32,6 +33,14 @@ newtype CertificateException = CertificateException {what :: String}
   deriving (Show)
 instance Exception CertificateException
 
+getCertByHash :: MonadResource m => ByteString -> m (ReleaseKey, Maybe PCCERT_CONTEXT)
+getCertByHash hash = flip allocate freeMaybeCert $ evalContT $ do
+  store <- ContT allocateStore
+  hash  <- ContT $ withByteStringAsBlob hash
+  cert  <- lift $ c_CertFindCertificateInStore store allCertEncodings 0 certFindHash (castPtr hash) nullPtr
+  return $ if cert == nullPtr
+    then Nothing
+    else Just cert
 
 -- | Get certificate from system storage by its friendly name property
 getCertByName :: MonadResource m => String -> m (ReleaseKey, Maybe PCCERT_CONTEXT)
@@ -61,15 +70,17 @@ getCertByName name = allocate ( evalContT $ do
           then return (Just cert)
           else iterateCertByName cert store propIdPtr retSizePtr
     --
-    freeMaybeCert Nothing     = pure ()
-    freeMaybeCert (Just cert) = c_CertFreeCertificateContext cert >> pure ()
+freeMaybeCert :: Maybe PCCERT_CONTEXT -> IO ()
+freeMaybeCert Nothing     = pure ()
+freeMaybeCert (Just cert) = c_CertFreeCertificateContext cert >> pure ()
     --
-    allocateStore = bracket ( do
-        store <- withCString "MY" (c_CertOpenStore c_CERT_STORE_PROV_SYSTEM_A 0 nullPtr c_CERT_SYSTEM_STORE_LOCAL_MACHINE . castPtr)
-        when (store == nullPtr) (throw $ CertificateException "failed to open certificate store")
-        pure store
-      )
-      (\store -> c_CertCloseStore store 0 >> pure ())
+allocateStore :: (HCERTSTORE -> IO a) -> IO a
+allocateStore = bracket ( do
+    store <- withCString "MY" (c_CertOpenStore c_CERT_STORE_PROV_SYSTEM_A 0 nullPtr c_CERT_SYSTEM_STORE_LOCAL_MACHINE . castPtr)
+    when (store == nullPtr) (throw $ CertificateException "failed to open certificate store")
+    pure store
+  )
+  (\store -> c_CertCloseStore store 0 >> pure ())
 
 
 -- | Get private key from certificate
@@ -131,7 +142,19 @@ derivedAesFromCertName :: (MonadResource m, MonadIO m)
 derivedAesFromCertName name = do
   (certRelease, mbCert)   <- getCertByName name
   case mbCert of
-    Nothing -> throw . CertificateException $ "Can't find certificate in store: " ++ name
+    Nothing -> throw . CertificateException $ "Can't find certificate in store by name: " ++ name
+    Just cert -> do
+      (keyRelease, certKey) <- getPrivateKey cert
+      r <- deriveAes certKey
+      mapM_ release [certRelease, keyRelease]
+      return r
+
+derivedAesFromCertHash :: (MonadResource m, MonadIO m)
+                       => ByteString -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
+derivedAesFromCertHash hash = do
+  (certRelease, mbCert)   <- getCertByHash hash
+  case mbCert of
+    Nothing -> throw . CertificateException $ "Can't find certificate in store by hash: " ++ show hash
     Just cert -> do
       (keyRelease, certKey) <- getPrivateKey cert
       r <- deriveAes certKey

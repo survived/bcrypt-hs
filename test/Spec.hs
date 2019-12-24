@@ -9,7 +9,7 @@ import qualified Data.ByteString as B
 
 import Test.Hspec
 import System.Win32.BCrypt
-import System.Win32.Certificate (derivedAesFromCertName, CertificateException)
+import System.Win32.Certificate (derivedAesFromCertName, derivedAesFromCertHash, CertificateException)
 
 main :: IO ()
 main = hspec $ do
@@ -55,48 +55,57 @@ main = hspec $ do
         let part2 = B.take 16 ciphertext
         part1 `shouldBe` part2
   describe "System certificate storage AES (requires MorjCert)" $ do
-    it "Can be created" . io . runResourceT $
-      void $ derivedAesFromCertName "MorjCert"
-    it "Can fail to be created" $
-      runResourceT (derivedAesFromCertName "123123idontexisthahaha") `shouldThrow` certificateException
-    it "Encrypts a block" $ io . runResourceT $ do
-      (_, aes) <- derivedAesFromCertName "MorjCert"
-      let plaintextLen = 16
-      ciphertext <- liftIO . encrypt aes $ B.replicate plaintextLen 27
-      liftIO $ B.length ciphertext `shouldBe` plaintextLen
-    it "Encrypts predictably" . io . runResourceT $ do
-      let plaintext = "There's a cat prowling through the streets at night and she's black and her eyes are burning yellow fierce and bright the night "
-      (_, aes1) <- derivedAesFromCertName "MorjCert"
-      ciphertext <- liftIO . encrypt aes1 $ plaintext
-      (_, aes2) <- derivedAesFromCertName "MorjCert"
-      plaintext' <- liftIO . decrypt aes2 $ ciphertext
-      liftIO $ plaintext `shouldBe` plaintext'
-    it "doesn't mix blocks" . io . runResourceT $ do
-      (_, aes) <- derivedAesFromCertName "MorjCert"
-      let block = "1234567890123456"
-      let plaintext = block <> block
-      ciphertext <- liftIO . encrypt aes $ plaintext
-      let part1 = B.drop 16 ciphertext
-      let part2 = B.take 16 ciphertext
-      liftIO $ part1 `shouldBe` part2
-    it "can be got out of resourceT" $ do
-      (releaseAction, aes) <- runResourceT $ do
-          -- extract them from resourceT as we can't exist inside it
-          (key, aes) <- derivedAesFromCertName "MorjCert"
-          mbRelease <- unprotect key
-          case mbRelease of
-            Just key' -> pure (key', aes)
-            Nothing -> error "Just created cipher has somehow been released"
-      let plaintextLen = 16
-      ciphertext <- encrypt aes (B.replicate plaintextLen 27)
-        `finally` releaseAction
-      B.length ciphertext `shouldBe` plaintextLen
-      return ()
-    it "Can be created really many times" $
-      forM_ [0..1000] $ \i ->
-        handleAny (throw . GotExceptionOnNthIteration i) $
-          io . runResourceT . void $ derivedAesFromCertName "MorjCert"
-
+    let waysToFind =
+          [ ("via MorjCert", derivedAesFromCertName "MorjCert")
+          , ("via 63b4ed... cert", derivedAesFromCertHash "\x63\xb4\xed\x55\xd9\xe1\x96\x85\x86\x03\x82\x97\x02\x8d\xb7\x03\xd0\x28\x13\x7d")
+          ]
+    forM_ waysToFind $ \(nameOfWay, deriveKey) -> describe nameOfWay $ do
+      it "Can be created" . io . runResourceT $
+        void deriveKey
+      it "Encrypts a block" $ io . runResourceT $ do
+        (_, aes) <- deriveKey
+        let plaintextLen = 16
+        ciphertext <- liftIO . encrypt aes $ B.replicate plaintextLen 27
+        liftIO $ B.length ciphertext `shouldBe` plaintextLen
+      it "Encrypts predictably" . io . runResourceT $ do
+        let plaintext = "There's a cat prowling through the streets at night and she's black and her eyes are burning yellow fierce and bright the night "
+        (_, aes1) <- deriveKey
+        ciphertext <- liftIO . encrypt aes1 $ plaintext
+        (_, aes2) <- deriveKey
+        plaintext' <- liftIO . decrypt aes2 $ ciphertext
+        liftIO $ plaintext `shouldBe` plaintext'
+      it "doesn't mix blocks" . io . runResourceT $ do
+        (_, aes) <- deriveKey
+        let block = "1234567890123456"
+        let plaintext = block <> block
+        ciphertext <- liftIO . encrypt aes $ plaintext
+        let part1 = B.drop 16 ciphertext
+        let part2 = B.take 16 ciphertext
+        liftIO $ part1 `shouldBe` part2
+      it "can be got out of resourceT" $ do
+        (releaseAction, aes) <- runResourceT $ do
+            -- extract them from resourceT as we can't exist inside it
+            (key, aes) <- deriveKey
+            mbRelease <- unprotect key
+            case mbRelease of
+              Just key' -> pure (key', aes)
+              Nothing -> error "Just created cipher has somehow been released"
+        let plaintextLen = 16
+        ciphertext <- encrypt aes (B.replicate plaintextLen 27)
+          `finally` releaseAction
+        B.length ciphertext `shouldBe` plaintextLen
+        return ()
+      it "Can be created really many times" $
+        forM_ [0..1000] $ \i ->
+          handleAny (throw . GotExceptionOnNthIteration i) $
+            io . runResourceT . void $ deriveKey
+    describe "corner cases" $ do
+      describe "looking for cert by friendly name" $
+        it "fails if cert is missing" $
+          runResourceT (derivedAesFromCertName "123123idontexisthahaha") `shouldThrow` certificateException
+      describe "looking for cert by hash" $
+        it "fails if cert is missing" $
+          runResourceT (derivedAesFromCertHash (B.replicate 20 0)) `shouldThrow` certificateException
 -- | Used to restrict ambiguous MonadIO m to unambiguous IO m
 io :: IO a -> IO a
 io = id

@@ -1,13 +1,15 @@
+{-# LANGUAGE RecordWildCards #-}
 module System.Win32.Certificate.Bindings.Externals where
 
 import Data.Bits       ((.|.))
+import Data.ByteString (ByteString, useAsCStringLen)
 import Data.Word       (Word32)
-import Foreign         (intPtrToPtr)
+import Foreign         (Storable(..), alloca, castPtr, intPtrToPtr)
 import Foreign.C.Types (CChar, CWchar)
 import Foreign.Ptr     (Ptr)
 
 #include <windows.h>
-#include <windows.h>
+#include <wincrypt.h>
 #include <bcrypt.h>
 #include <ncrypt.h>
 
@@ -80,6 +82,8 @@ certFindProperty :: DWORD
 certFindProperty = #{const CERT_FIND_PROPERTY}
 certFriendlyNamePropId :: DWORD
 certFriendlyNamePropId = #{const CERT_FRIENDLY_NAME_PROP_ID}
+certFindHash :: DWORD
+certFindHash = #{const CERT_FIND_HASH}
 
 -- BOOL CertFreeCertificateContext(
 --   PCCERT_CONTEXT pCertContext
@@ -188,3 +192,26 @@ foreign import stdcall "NCryptEncrypt"
 
 noPaddingFlag :: DWORD
 noPaddingFlag = #{const NCRYPT_NO_PADDING_FLAG}
+
+data CryptoBlob = CryptoBlob
+  { cryptoBlobSize :: DWORD
+  , cryptoBlobPtr  :: Ptr ()
+  }
+
+instance Storable CryptoBlob where
+  alignment _ = #{alignment CRYPT_DATA_BLOB}
+  sizeOf _ = #{size CRYPT_DATA_BLOB}
+  peek ptr = do
+    cryptoBlobSize <- #{peek CRYPT_DATA_BLOB, cbData} ptr
+    cryptoBlobPtr  <- #{peek CRYPT_DATA_BLOB, pbData} ptr
+    return CryptoBlob {..}
+  poke ptr CryptoBlob {..} = do
+    #{poke CRYPT_DATA_BLOB, cbData} ptr cryptoBlobSize
+    #{poke CRYPT_DATA_BLOB, pbData} ptr cryptoBlobPtr
+
+withByteStringAsBlob :: ByteString -> (Ptr CryptoBlob -> IO a) -> IO a
+withByteStringAsBlob bs f =
+  useAsCStringLen bs $ \(ptr, len) ->
+    alloca $ \blobPtr -> do
+      poke blobPtr CryptoBlob { cryptoBlobSize = fromIntegral len, cryptoBlobPtr = castPtr ptr }
+      f blobPtr
