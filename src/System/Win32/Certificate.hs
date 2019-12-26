@@ -2,14 +2,16 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module System.Win32.Certificate
   ( getCertByName
+  , getCertByHash
   , getPrivateKey
+  , getCertificatePrivateData
   , deriveAes
   , derivedAesFromCertName
   , derivedAesFromCertHash
   , CertificateException
   ) where
 
-import System.Win32.BCrypt                       (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
+import System.Win32.BCrypt          (openSymmetricAlgorithm, generateSymmetricKey, setAlgorithmProperty)
 import Control.Exception            (Exception, throw, bracket)
 import Control.Monad                (when)
 import Control.Monad.IO.Class       (MonadIO, liftIO)
@@ -103,33 +105,43 @@ getPrivateKey cert = do
   return (releaseKey, keyHandle)
 
 
--- | A hacky solution to derive key from certificate: encrypt some predefined
--- bytes with a certificate private key, and use those bytes to derive key
-deriveAes :: (MonadResource m, MonadIO m)
-          => NCRYPT_KEY_HANDLE -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
-deriveAes ncryptKey = do
-  (algRelease, bcryptAlg) <- openSymmetricAlgorithm BCrypt.BCryptAlgAES BCrypt.MsPrimitiveProvider
-  liftIO $ setAlgorithmProperty bcryptAlg BCrypt.ChaingModeProp BCrypt.ChainingModeECB
+-- | Used to derive other keys, especially bcrypt. As there's no way to simply
+-- derive a key from certificate, we get a bytestring that is uniquely
+-- determined by certificate private keys, and use that as raw bytes.
+getCertificatePrivateData :: (MonadResource m, MonadIO m)
+                          => PCCERT_CONTEXT -> m ByteString
+getCertificatePrivateData cert = do
+  (keyRelease, certKey) <- getPrivateKey cert
   keyMaterial <- liftIO . evalContT $ do
     retSizePtr <- ContT alloca
     --
     blockSizePtr :: Ptr DWORD  <- ContT alloca
     propName <- ContT $ withCWString "Block Length"
-    status   <- lift $ c_NCryptGetProperty ncryptKey propName blockSizePtr 4 retSizePtr 0
+    status   <- lift $ c_NCryptGetProperty certKey propName blockSizePtr 4 retSizePtr 0
     when (status /= 0) (throw $ CertificateException "Failed to get block size")
     blockSize <- lift $ peek blockSizePtr
     --
     keyMaterialRaw <- ContT . useAsCString . pack . take (fromIntegral blockSize) $ [0,1..]
-    status <- lift $ c_NCryptEncrypt ncryptKey keyMaterialRaw blockSize nullPtr
+    status <- lift $ c_NCryptEncrypt certKey keyMaterialRaw blockSize nullPtr
                                      nullPtr 0 retSizePtr noPaddingFlag
     when (status /= 0) (throw $ CertificateException "Failed to query encrypted data size")
     keySize <- lift $ peek retSizePtr
     keyMaterialPtr <- ContT $ allocaBytes (fromIntegral keySize)
-    status <- lift $ c_NCryptEncrypt ncryptKey keyMaterialRaw blockSize nullPtr
+    status <- lift $ c_NCryptEncrypt certKey keyMaterialRaw blockSize nullPtr
                                      keyMaterialPtr keySize retSizePtr noPaddingFlag
     when (status /= 0) (throw $ CertificateException "Failed to get key material")
     lift $ packCStringLen (keyMaterialPtr, fromIntegral keySize)
-  --
+  release keyRelease
+  return keyMaterial
+
+
+-- | Derive AES from any key material. This is used in conjunction with
+-- getCertificatePrivateData to derive aes from windows certificates
+deriveAes :: (MonadResource m, MonadIO m)
+          => ByteString -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
+deriveAes keyMaterial = do
+  (algRelease, bcryptAlg) <- openSymmetricAlgorithm BCrypt.BCryptAlgAES BCrypt.MsPrimitiveProvider
+  liftIO $ setAlgorithmProperty bcryptAlg BCrypt.ChaingModeProp BCrypt.ChainingModeECB
   r <- generateSymmetricKey bcryptAlg keyMaterial
   release algRelease
   return r
@@ -144,9 +156,9 @@ derivedAesFromCertName name = do
   case mbCert of
     Nothing -> throw . CertificateException $ "Can't find certificate in store by name: " ++ name
     Just cert -> do
-      (keyRelease, certKey) <- getPrivateKey cert
-      r <- deriveAes certKey
-      mapM_ release [certRelease, keyRelease]
+      certData <- getCertificatePrivateData cert
+      r <- deriveAes certData
+      release certRelease
       return r
 
 derivedAesFromCertHash :: (MonadResource m, MonadIO m)
@@ -156,7 +168,7 @@ derivedAesFromCertHash hash = do
   case mbCert of
     Nothing -> throw . CertificateException $ "Can't find certificate in store by hash: " ++ show hash
     Just cert -> do
-      (keyRelease, certKey) <- getPrivateKey cert
-      r <- deriveAes certKey
-      mapM_ release [certRelease, keyRelease]
+      certData <- getCertificatePrivateData cert
+      r <- deriveAes certData
+      release certRelease
       return r
