@@ -19,6 +19,7 @@ import Control.Monad.Trans.Class    (lift)
 import Control.Monad.Trans.Cont     (ContT (..), evalContT)
 import Control.Monad.Trans.Resource ( MonadResource, ReleaseKey, register
                                     , allocate, runResourceT, release
+                                    , MonadThrow
                                     )
 import Data.ByteString              (ByteString, pack, useAsCString, packCStringLen)
 import Foreign.C.String             (peekCWString, withCString, withCWString)
@@ -137,7 +138,7 @@ getCertificatePrivateData cert = do
 
 -- | Derive AES from any key material. This is used in conjunction with
 -- getCertificatePrivateData to derive aes from windows certificates
-deriveAes :: (MonadResource m, MonadIO m)
+deriveAes :: (MonadResource m, MonadIO m, MonadThrow m)
           => ByteString -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
 deriveAes keyMaterial = do
   (algRelease, bcryptAlg) <- openSymmetricAlgorithm BCrypt.BCryptAlgAES BCrypt.MsPrimitiveProvider
@@ -149,7 +150,7 @@ deriveAes keyMaterial = do
 
 -- | A chain of three function above: gets a certificate with given name, and
 -- derives an AES key based on certificate's private key
-derivedAesFromCertName :: (MonadResource m, MonadIO m)
+derivedAesFromCertName :: (MonadResource m, MonadIO m, MonadThrow m)
                        => String -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
 derivedAesFromCertName name = do
   (certRelease, mbCert)   <- getCertByName name
@@ -161,7 +162,7 @@ derivedAesFromCertName name = do
       release certRelease
       return r
 
-derivedAesFromCertHash :: (MonadResource m, MonadIO m)
+derivedAesFromCertHash :: (MonadResource m, MonadIO m, MonadThrow m)
                        => ByteString -> m (ReleaseKey, BCrypt.SymmetricKeyHandle)
 derivedAesFromCertHash hash = do
   (certRelease, mbCert)   <- getCertByHash hash

@@ -8,7 +8,7 @@ module System.Win32.BCrypt.Symmetric
 
 import Control.Monad (when, join, void)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, allocate, register, unprotect)
+import Control.Monad.Trans.Resource (MonadResource, ReleaseKey, MonadThrow, allocate, register, unprotect)
 import Data.ByteString (ByteString, useAsCStringLen, packCStringLen)
 import Data.Function (on)
 import Foreign.Marshal.Alloc (alloca, free)
@@ -28,7 +28,8 @@ data SymmetricKeyHandle = SymmetricKeyHandle
   , symmetricKeyHandle :: B.BCRYPT_KEY_HANDLE
   }
 
-generateSymmetricKey :: MonadResource m => SymmetricAlgorithmHandler -> ByteString -> m (ReleaseKey, SymmetricKeyHandle)
+generateSymmetricKey :: (MonadResource m, MonadThrow m)
+                     => SymmetricAlgorithmHandler -> ByteString -> m (ReleaseKey, SymmetricKeyHandle)
 generateSymmetricKey alg privateKey = do
   (objectSize :: ULONG) <- liftIO $ getAlgorithmProperty alg ObjectLengthProp
   (releaseObject, objectPtr) <- allocate (mallocArray (fromIntegral objectSize)) free

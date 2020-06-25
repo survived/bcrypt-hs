@@ -1,12 +1,17 @@
-module System.Win32.BCrypt.Types where
+module System.Win32.BCrypt.Types
+  ( ULONG
+  , NTSTATUS, validateNTStatus
+  , BCryptException (..)
+  )
+where
 
 import Control.Exception.Safe
 import Data.Int (Int32)
 import Data.Word (Word32)
+import System.Win32.Types (ULONG)
 import Text.Printf
 
 type NTSTATUS = Int32
-type ULONG = Word32
 
 data BCryptException = BCryptException NTSTATUS String
   deriving Typeable
